@@ -1,0 +1,23 @@
+---
+
+devices:
+{%- for device in data_to_template %}
+{%-     if device.softwareType != "Cisco Controller" %}
+    {{ device.hostname }}:
+        alias: '{{ device.hostname }}'
+        type: '{{ device.type }}'
+        os: '{{ device.softwareType | lower | replace("-","") }}'
+        platform: {{ device.platformId }}
+        credentials:
+            default:
+                username: {{ credentials.cli[0].username }}
+                password: {{ credentials.cli[0].enablePassword }}
+        connections:
+            cli:
+                protocol: ssh
+                ip: {{ device.managementIpAddress }}
+                port: 22
+                arguments:
+                    connection_timeout: 360
+{%-     endif %}
+{%- endfor %}
