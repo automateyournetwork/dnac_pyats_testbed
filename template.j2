@@ -10,8 +10,8 @@ devices:
         platform: {{ device.platformId }}
         credentials:
             default:
-                username: {{ credentials.cli[0].username }}
-                password: {{ credentials.cli[0].enablePassword }}
+                username: {{ username.cli[0].username }}
+                password: {{ password }}
         connections:
             cli:
                 protocol: ssh
@@ -21,3 +21,4 @@ devices:
                     connection_timeout: 360
 {%-     endif %}
 {%- endfor %}
+

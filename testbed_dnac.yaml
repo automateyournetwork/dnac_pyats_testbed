@@ -1,0 +1,15 @@
+---
+
+devices:
+  sandboxdnac2.cisco.com:
+      type: 'dnac'
+      os: 'dnac'
+      alias: 'sandboxdnac2.cisco.com'
+      connections:
+          rest:
+              class: rest.connector.Rest
+              ip : "sandboxdnac2.cisco.com"
+              username: devnetuser
+              password: Cisco123!
+              port: 443
+              verify: False

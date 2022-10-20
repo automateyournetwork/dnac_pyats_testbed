@@ -1,41 +1,87 @@
 # Module import
-import requests
 import os
-import json
-import urllib3
-from requests.auth import HTTPBasicAuth
+import logging
+import jinja2
+from pyats import aetest
+from pyats.log.utils import banner
 from dotenv import load_dotenv
-from pathlib import Path
-from jinja2 import Environment, FileSystemLoader
-
-urllib3.disable_warnings()
 
 load_dotenv()
+DEVICE_PASSWORD = os.getenv("DEVICE_PASSWORD")
 
-USERNAME = os.getenv("USERNAME")
-PASSWORD = os.getenv("PASSWORD")
-BASE_URL = os.getenv("BASE_URL")
-AUTH_URL = os.getenv("AUTH_URL")
+# ----------------
+# Get logger for script
+# ----------------
 
-template_dir = Path(__file__).resolve().parent
-env = Environment(loader=FileSystemLoader(template_dir))
+log = logging.getLogger(__name__)
 
+# ----------------
+# AE Test Setup
+# ----------------
+class common_setup(aetest.CommonSetup):
+    """Common Setup section"""
+# ----------------
+# Connected to devices
+# ----------------
+    @aetest.subsection
+    def connect_to_devices(self, testbed):
+        """Connect to all the devices"""
+        testbed.connect()
 
-response = requests.post(f"{ BASE_URL }{ AUTH_URL }", auth=HTTPBasicAuth(USERNAME, PASSWORD), verify=False)
-token = response.json()['Token']
+# ----------------
+# Mark the loop
+# ----------------
+    @aetest.subsection
+    def loop_mark(self, testbed):
+        aetest.loop.mark(GenerateTestbed, device_name=testbed.devices)
+        aetest.loop.mark(ValidateTestbed, device_name=testbed.devices)
 
-deviceAPI = "/dna/intent/api/v1/network-device"
-credentialsAPI = "/dna/intent/api/v1/device-credential/"
-headers={
-            "X-Auth-Token": "{}".format(token),
-            "Content-type": "application/json",
-        }
-device_list = requests.get(f"{ BASE_URL }{ deviceAPI }", headers=headers ,verify=False)
-credentials_list = requests.get(f"{ BASE_URL }{ credentialsAPI }", headers=headers ,verify=False) 
+# ----------------
+# Generate testbed from DNAC
+# ----------------
+class GenerateTestbed(aetest.Testcase):
+    """Use DNAC APIs and Jinja2 to generate a pyATS Testbed"""
 
-devices_template = env.get_template('template.j2')
-template_output = devices_template.render(data_to_template = device_list.json()['response'], credentials = credentials_list.json())
+    @aetest.setup
+    def setup(self, testbed, device_name):
+        """ Testcase Setup section """
+        # connect to device
+        self.device = testbed.devices[device_name]
+    
+    @aetest.test
+    def get_credential_data(self):
+        credential_list = self.device.rest.get("/dna/intent/api/v1/device-credential/")
+        # Get the JSON payload
+        self.credential_data=credential_list.json()
 
-with open("testbed.yaml", "w") as fh:
-    fh.write(template_output)               
-    fh.close()
+    @aetest.test
+    def get_devices_data(self):
+        device_list = self.device.rest.get("/dna/intent/api/v1/network-device/")
+        # Get the JSON payload
+        self.device_data=device_list.json()['response']
+
+    @aetest.test
+    def setup_template(self):
+        with open('template.j2', "r") as f:
+            template_data = f.read()
+        template = jinja2.Template(template_data)
+        self.template_output = template.render(data_to_template = self.device_data, username = self.credential_data, password = DEVICE_PASSWORD)
+
+    @aetest.test
+    def generate_testbed(self):
+        with open("testbed.yaml", "w") as fh:
+            fh.write(self.template_output)               
+            fh.close()
+
+# ----------------
+# Validate Testbed
+# ----------------
+class ValidateTestbed(aetest.Testcase):
+    """Use pyATS Validate to validate generated testbed"""
+
+    @aetest.test
+    def validate_testbed(self):
+        """ Testcase Setup section """
+        # connect to device
+        os.system("pyats validate testbed --testbed-file testbed.yaml")
+        # Loop over devices in tested for testing
