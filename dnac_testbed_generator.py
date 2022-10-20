@@ -29,24 +29,17 @@ class common_setup(aetest.CommonSetup):
         testbed.connect()
 
 # ----------------
-# Mark the loop
-# ----------------
-    @aetest.subsection
-    def loop_mark(self, testbed):
-        aetest.loop.mark(GenerateTestbed, device_name=testbed.devices)
-        aetest.loop.mark(ValidateTestbed, device_name=testbed.devices)
-
-# ----------------
 # Generate testbed from DNAC
 # ----------------
 class GenerateTestbed(aetest.Testcase):
     """Use DNAC APIs and Jinja2 to generate a pyATS Testbed"""
 
     @aetest.setup
-    def setup(self, testbed, device_name):
+    def setup(self, testbed):
         """ Testcase Setup section """
         # connect to device
-        self.device = testbed.devices[device_name]
+        for device,device_name in testbed.devices.items():
+            self.device = device_name
     
     @aetest.test
     def get_credential_data(self):
