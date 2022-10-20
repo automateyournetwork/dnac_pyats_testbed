@@ -1,0 +1,1 @@
+This repository includes a pyATS Job that can be used with a Cisco DNA-C as a source of truth and generate and validate a pyATS testbed from the DNA-C devices and credentials API 
